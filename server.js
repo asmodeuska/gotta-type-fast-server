@@ -3,7 +3,7 @@ require('dotenv').config();
 const io = require('socket.io')(3001,
     {
         cors: {
-            origin: [process.env.FRONTEND_URL],
+            origin: ["*"],
         }
     });
 io.on("connection", (socket) => {
