@@ -1,18 +1,25 @@
 const rooms = [];
 require('dotenv').config();
-const io = require('socket.io')(3001,
-    {
-        cors: {
-            origin: "*",
-        }
-    });
+cors = require('cors');
+
+const app = require('express')();
+app.use(cors());
+
+const server = require('http').createServer(app);
+const io = require('socket.io')(server,{
+    cors: {
+        origin: '*',
+    }
+});
+const port = 3001;
+
 io.on("connection", (socket) => {
     socket.on("sendProgress", (progress) => {
         io.broadcast.emit("receiveProgress", progress);
     })
     socket.on("joinRoom", async (data) => {
-        for(data.roomName in socket.rooms){
-            if(socket.id !== room) 
+        for (data.roomName in socket.rooms) {
+            if (socket.id !== room)
                 socket.leave(room);
         }
         if (data.roomName === "") {
@@ -20,10 +27,10 @@ io.on("connection", (socket) => {
             return;
         }
         else {
-            let room=rooms.find(room => room.name === data.roomName);
-            if(room){
-                if(!room.users.find(user => user.name === socket.name)){
-                    room.users.push({id: socket.id, name: data.userName, ready: false, progress: 0, finishPlace: 0});
+            let room = rooms.find(room => room.name === data.roomName);
+            if (room) {
+                if (!room.users.find(user => user.name === socket.name)) {
+                    room.users.push({ id: socket.id, name: data.userName, ready: false, progress: 0, finishPlace: 0 });
                 }
                 else {
                     socket.emit("error", "User already exists");
@@ -31,10 +38,10 @@ io.on("connection", (socket) => {
                 socket.join(data.roomName);
                 io.to(data.roomName).emit("joinRoom", room.text, room.users);
             }
-            else{
-                rooms.push({users: [{id: socket.id, name: data.userName, ready: false, progress: 0, finishPlace: 0}], gameStarted: false, finishedPlayer:0, name: data.roomName, text: data.text});
+            else {
+                rooms.push({ users: [{ id: socket.id, name: data.userName, ready: false, progress: 0, finishPlace: 0 }], gameStarted: false, finishedPlayer: 0, name: data.roomName, text: data.text });
                 socket.join(data.roomName);
-                room=rooms.find(room => room.name === data.roomName);
+                room = rooms.find(room => room.name === data.roomName);
                 io.to(data.roomName).emit("joinRoom", room.text, room.users);
             }
 
@@ -79,3 +86,6 @@ io.on("connection", (socket) => {
     })
 });
 
+server.listen(port, function () {
+    console.log(`Listening on port ${port}`);
+});
