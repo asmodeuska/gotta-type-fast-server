@@ -11,7 +11,7 @@ const io = require('socket.io')(server,{
         origin: '*',
     }
 });
-const port = 3001;
+const port = 3000;
 
 io.on("connection", (socket) => {
     socket.on("sendProgress", (progress) => {
