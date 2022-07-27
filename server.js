@@ -1,9 +1,9 @@
-const rooms = [{ users: [], name: "", text: "" }];
+const rooms = [];
 require('dotenv').config();
 const io = require('socket.io')(3001,
     {
         cors: {
-            origin: [process.env.FRONTEND_URL],
+            origin: "*",
         }
     });
 io.on("connection", (socket) => {
@@ -23,7 +23,7 @@ io.on("connection", (socket) => {
             let room=rooms.find(room => room.name === data.roomName);
             if(room){
                 if(!room.users.find(user => user.name === socket.name)){
-                    room.users.push({id: socket.id, name: data.userName, ready: false, progress: 0});
+                    room.users.push({id: socket.id, name: data.userName, ready: false, progress: 0, finishPlace: 0});
                 }
                 else {
                     socket.emit("error", "User already exists");
@@ -32,7 +32,7 @@ io.on("connection", (socket) => {
                 io.to(data.roomName).emit("joinRoom", room.text, room.users);
             }
             else{
-                rooms.push({users: [{id: socket.id, name: data.userName, ready: false, progress: 0}], gameStarted: false, name: data.roomName, text: data.text});
+                rooms.push({users: [{id: socket.id, name: data.userName, ready: false, progress: 0, finishPlace: 0}], gameStarted: false, finishedPlayer:0, name: data.roomName, text: data.text});
                 socket.join(data.roomName);
                 room=rooms.find(room => room.name === data.roomName);
                 io.to(data.roomName).emit("joinRoom", room.text, room.users);
@@ -70,8 +70,8 @@ io.on("connection", (socket) => {
 
     socket.on("gameFinished", data => {
         rooms[data.roomName].gameStarted = false;
-        let winnner = rooms[data.roomName].users.find(user => user.id === socket.id).winner = user.name;
-        io.to(data.roomName).emit("gameFinished", winner);
+        rooms[data.roomname].users.find(user => user.id === socket.id).finishPlace = ++rooms[data.roomName].finishedPlayer;
+        io.to(data.roomName).emit("gameFinished", rooms[data.roomName].users);
     })
 
     socket.on("leaveRoom", (data) => {
