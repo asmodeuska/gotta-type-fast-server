@@ -1,6 +1,7 @@
 const rooms = [];
 require('dotenv').config();
 cors = require('cors');
+const fetch = require('node-fetch');
 
 const app = require('express')();
 app.use(cors());
@@ -11,7 +12,7 @@ const io = require('socket.io')(server,{
         origin: '*',
     }
 });
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 3001;
 
 io.on("connection", (socket) => {
     socket.on("sendProgress", (progress) => {
@@ -85,6 +86,21 @@ io.on("connection", (socket) => {
         socket.leave(data.roomName);
     })
 });
+
+app.get('/generate', async(req, res) => {
+    try {
+        await fetch(`http://metaphorpsum.com/paragraphs/1/5`)
+            .then(res => res.text())
+            .then(data => {
+                res.send(data);
+            }).catch(err => {
+                res.sendStatus(403);
+            }
+            );
+    } catch (err) {
+        res.sendStatus(404);
+    }
+})
 
 server.listen(port, function () {
     console.log(`Listening on port ${port}`);
