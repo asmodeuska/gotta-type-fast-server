@@ -19,18 +19,13 @@ const port = process.env.PORT || 3001;
 
 io.on("connection", (socket) => {
     socket.on("saveUsername", (data) => {
-        console.log("saveUsername: " + data);
         socket.userID = crypt.randomBytes(16).toString("hex");
         socket.username = data + '#' + socket.userID.slice(socket.userID.length - 4);
         users[socket.userID] = { username: socket.username, userID: socket.userID };
-        console.log("users: ");
-        console.log(users);
         socket.emit("userChecked", true, socket.username, socket.userID);
     });
 
     socket.on("checkUser", (data) => {
-        console.log("checkUser: ");
-        console.log(data);
         if (users[data.userID] && users[data.userID].username === data.username) {
             socket.username = data.username;
             socket.userID = data.userID;
