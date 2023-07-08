@@ -1,106 +1,50 @@
 const rooms = [];
+const users = [];
 require('dotenv').config();
 cors = require('cors');
 const fetch = require('node-fetch');
-
 const app = require('express')();
 app.use(cors());
 
+const { paragraph } = require('txtgen/dist/cjs/txtgen.js')
+
 const server = require('http').createServer(app);
-const io = require('socket.io')(server,{
+const io = require('socket.io')(server, {
     cors: {
         origin: '*',
     }
 });
+const crypt = require('crypto');
 const port = process.env.PORT || 3001;
 
 io.on("connection", (socket) => {
-    socket.on("sendProgress", (progress) => {
-        io.broadcast.emit("receiveProgress", progress);
-    })
-    socket.on("joinRoom", async (data) => {
-        for (data.roomName in socket.rooms) {
-            if (socket.id !== room)
-                socket.leave(room);
-        }
-        if (data.roomName === "") {
-            socket.emit("joinRoom", "Room name is required");
-            return;
-        }
-        else {
-            let room = rooms.find(room => room.name === data.roomName);
-            if (room) {
-                if (!room.users.find(user => user.name === socket.name)) {
-                    room.users.push({ id: socket.id, name: data.userName, ready: false, progress: 0, finishPlace: 0 });
-                }
-                else {
-                    socket.emit("error", "User already exists");
-                }
-                socket.join(data.roomName);
-                io.to(data.roomName).emit("joinRoom", room.text, room.users);
-            }
-            else {
-                rooms.push({ users: [{ id: socket.id, name: data.userName, ready: false, progress: 0, finishPlace: 0 }], gameStarted: false, finishedPlayer: 0, name: data.roomName, text: data.text });
-                socket.join(data.roomName);
-                room = rooms.find(room => room.name === data.roomName);
-                io.to(data.roomName).emit("joinRoom", room.text, room.users);
-            }
-
-        }
-    })
-
-    socket.on("playerReady", (data) => {
-        let room = rooms.find(room => room.name === data.roomName);
-        if (room) {
-            let user = room.users.find(user => user.id === socket.id);
-            if (user) {
-                user.ready = true;
-                io.to(data.roomName).emit("playerReady", room.users);
-            }
-        }
+    socket.on("saveUsername", (data) => {
+        console.log("saveUsername: " + data);
+        socket.userID = crypt.randomBytes(16).toString("hex");
+        socket.username = data + '#' + socket.userID.slice(socket.userID.length - 4);
+        users[socket.userID] = { username: socket.username, userID: socket.userID };
+        console.log("users: ");
+        console.log(users);
+        socket.emit("userChecked", true, socket.username, socket.userID);
     });
 
-    socket.on("playerProgress", (data) => {
-        let room = rooms.find(room => room.name === data.roomName);
-        if (room) {
-            let user = room.users.find(user => user.id === socket.id);
-            if (user) {
-                user.progress = data.progress;
-                io.to(data.roomName).emit("playerProgress", room.users);
-            }
+    socket.on("checkUser", (data) => {
+        console.log("checkUser: ");
+        console.log(data);
+        if (users[data.userID] && users[data.userID].username === data.username) {
+            socket.username = data.username;
+            socket.userID = data.userID;
+            socket.emit("userChecked", true, socket.username, socket.userID);
+            return;
         }
-    })
+        socket.emit("userChecked", false);
+    });
 
-    socket.on("startGame", (data) => {
-        rooms[data.roomName].gameStarted = true;
-        io.to(data.roomName).emit("startGame");
-    })
-
-    socket.on("gameFinished", data => {
-        rooms[data.roomName].gameStarted = false;
-        rooms[data.roomname].users.find(user => user.id === socket.id).finishPlace = ++rooms[data.roomName].finishedPlayer;
-        io.to(data.roomName).emit("gameFinished", rooms[data.roomName].users);
-    })
-
-    socket.on("leaveRoom", (data) => {
-        socket.leave(data.roomName);
-    })
 });
 
-app.get('/generate', async(req, res) => {
-    try {
-        await fetch(`http://metaphorpsum.com/paragraphs/1/5`)
-            .then(res => res.text())
-            .then(data => {
-                res.send(data);
-            }).catch(err => {
-                res.sendStatus(403);
-            }
-            );
-    } catch (err) {
-        res.sendStatus(404);
-    }
-})
+app.get('/generate', async (req, res) => {
+    res.send(paragraph( Math.floor(Math.random() * 5) + 1, { paragraphLowerBound: 3, paragraphUpperBound: 7 }));
+});
 
 server.listen(port, function () {
     console.log(`Listening on port ${port}`);
